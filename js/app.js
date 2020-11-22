@@ -1,1 +1,198 @@
-!function(){"use strict";var r="undefined"==typeof global?self:global;if("function"!=typeof r.require){var e={},t={},i={},n={}.hasOwnProperty,o=/^\.\.?(\/|$)/,s=function(r,e){for(var t,i=[],n=(o.test(e)?r+"/"+e:e).split("/"),s=0,u=n.length;s<u;s++)t=n[s],".."===t?i.pop():"."!==t&&""!==t&&i.push(t);return i.join("/")},u=function(r){return r.split("/").slice(0,-1).join("/")},a=function(e){return function(t){var i=s(u(e),t);return r.require(i,e)}},c=function(r,e){var i=g&&g.createHot(r),n={id:r,exports:{},hot:i};return t[r]=n,e(n.exports,a(r),n),n.exports},f=function(r){var e=i[r];return e&&r!==e?f(e):r},l=function(r,e){return f(s(u(r),e))},p=function(r,i){null==i&&(i="/");var o=f(r);if(n.call(t,o))return t[o].exports;if(n.call(e,o))return c(o,e[o]);throw new Error("Cannot find module '"+r+"' from '"+i+"'")};p.alias=function(r,e){i[e]=r};var d=/\.[^.\/]+$/,h=/\/index(\.[^\/]+)?$/,v=function(r){if(d.test(r)){var e=r.replace(d,"");n.call(i,e)&&i[e].replace(d,"")!==e+"/index"||(i[e]=r)}if(h.test(r)){var t=r.replace(h,"");n.call(i,t)||(i[t]=r)}};p.register=p.define=function(r,i){if(r&&"object"==typeof r)for(var o in r)n.call(r,o)&&p.register(o,r[o]);else e[r]=i,delete t[r],v(r)},p.list=function(){var r=[];for(var t in e)n.call(e,t)&&r.push(t);return r};var g=r._hmr&&new r._hmr(l,p,e,t);p._cache=t,p.hmr=g&&g.wrap,p.brunch=!0,r.require=p}}(),function(){var r;"undefined"==typeof window?this:window;require.register("404.static.hbs",function(r,e,t){}),require.register("index.static.hbs",function(r,e,t){}),require.register("initialize.js",function(r,e,t){"use strict";e("jquery"),e("bootstrap/js/dist/collapse");document.addEventListener("DOMContentLoaded",function(){console.log("Initialized app")})}),require.register("layouts/main.static.hbs",function(r,e,t){}),require.register("partials/footer.static.hbs",function(r,e,t){}),require.register("partials/navbar.static.hbs",function(r,e,t){}),require.register("privacy-policy.static.hbs",function(r,e,t){}),require.register("terms-of-use.static.hbs",function(r,e,t){}),require.alias("process/browser.js","process"),r=require("process"),require.register("___globals___",function(r,e,t){})}(),require("___globals___");
+(function() {
+  'use strict';
+
+  var globals = typeof global === 'undefined' ? self : global;
+  if (typeof globals.require === 'function') return;
+
+  var modules = {};
+  var cache = {};
+  var aliases = {};
+  var has = {}.hasOwnProperty;
+
+  var expRe = /^\.\.?(\/|$)/;
+  var expand = function(root, name) {
+    var results = [], part;
+    var parts = (expRe.test(name) ? root + '/' + name : name).split('/');
+    for (var i = 0, length = parts.length; i < length; i++) {
+      part = parts[i];
+      if (part === '..') {
+        results.pop();
+      } else if (part !== '.' && part !== '') {
+        results.push(part);
+      }
+    }
+    return results.join('/');
+  };
+
+  var dirname = function(path) {
+    return path.split('/').slice(0, -1).join('/');
+  };
+
+  var localRequire = function(path) {
+    return function expanded(name) {
+      var absolute = expand(dirname(path), name);
+      return globals.require(absolute, path);
+    };
+  };
+
+  var initModule = function(name, definition) {
+    var hot = hmr && hmr.createHot(name);
+    var module = {id: name, exports: {}, hot: hot};
+    cache[name] = module;
+    definition(module.exports, localRequire(name), module);
+    return module.exports;
+  };
+
+  var expandAlias = function(name) {
+    var val = aliases[name];
+    return (val && name !== val) ? expandAlias(val) : name;
+  };
+
+  var _resolve = function(name, dep) {
+    return expandAlias(expand(dirname(name), dep));
+  };
+
+  var require = function(name, loaderPath) {
+    if (loaderPath == null) loaderPath = '/';
+    var path = expandAlias(name);
+
+    if (has.call(cache, path)) return cache[path].exports;
+    if (has.call(modules, path)) return initModule(path, modules[path]);
+
+    throw new Error("Cannot find module '" + name + "' from '" + loaderPath + "'");
+  };
+
+  require.alias = function(from, to) {
+    aliases[to] = from;
+  };
+
+  var extRe = /\.[^.\/]+$/;
+  var indexRe = /\/index(\.[^\/]+)?$/;
+  var addExtensions = function(bundle) {
+    if (extRe.test(bundle)) {
+      var alias = bundle.replace(extRe, '');
+      if (!has.call(aliases, alias) || aliases[alias].replace(extRe, '') === alias + '/index') {
+        aliases[alias] = bundle;
+      }
+    }
+
+    if (indexRe.test(bundle)) {
+      var iAlias = bundle.replace(indexRe, '');
+      if (!has.call(aliases, iAlias)) {
+        aliases[iAlias] = bundle;
+      }
+    }
+  };
+
+  require.register = require.define = function(bundle, fn) {
+    if (bundle && typeof bundle === 'object') {
+      for (var key in bundle) {
+        if (has.call(bundle, key)) {
+          require.register(key, bundle[key]);
+        }
+      }
+    } else {
+      modules[bundle] = fn;
+      delete cache[bundle];
+      addExtensions(bundle);
+    }
+  };
+
+  require.list = function() {
+    var list = [];
+    for (var item in modules) {
+      if (has.call(modules, item)) {
+        list.push(item);
+      }
+    }
+    return list;
+  };
+
+  var hmr = globals._hmr && new globals._hmr(_resolve, require, modules, cache);
+  require._cache = cache;
+  require.hmr = hmr && hmr.wrap;
+  require.brunch = true;
+  globals.require = require;
+})();
+
+(function() {
+var global = typeof window === 'undefined' ? this : window;
+var process;
+var __makeRelativeRequire = function(require, mappings, pref) {
+  var none = {};
+  var tryReq = function(name, pref) {
+    var val;
+    try {
+      val = require(pref + '/node_modules/' + name);
+      return val;
+    } catch (e) {
+      if (e.toString().indexOf('Cannot find module') === -1) {
+        throw e;
+      }
+
+      if (pref.indexOf('node_modules') !== -1) {
+        var s = pref.split('/');
+        var i = s.lastIndexOf('node_modules');
+        var newPref = s.slice(0, i).join('/');
+        return tryReq(name, newPref);
+      }
+    }
+    return none;
+  };
+  return function(name) {
+    if (name in mappings) name = mappings[name];
+    if (!name) return;
+    if (name[0] !== '.' && pref) {
+      var val = tryReq(name, pref);
+      if (val !== none) return val;
+    }
+    return require(name);
+  }
+};
+require.register("404.static.hbs", function(exports, require, module) {
+
+});
+
+;require.register("index.static.hbs", function(exports, require, module) {
+
+});
+
+;require.register("initialize.js", function(exports, require, module) {
+"use strict";
+
+var $ = require('jquery');
+
+var collapse = require('bootstrap/js/dist/collapse');
+
+document.addEventListener('DOMContentLoaded', function () {
+  // do your setup here
+  console.log('Initialized app');
+});
+});
+
+require.register("layouts/main.static.hbs", function(exports, require, module) {
+
+});
+
+;require.register("partials/footer.static.hbs", function(exports, require, module) {
+
+});
+
+;require.register("partials/navbar.static.hbs", function(exports, require, module) {
+
+});
+
+;require.register("privacy-policy.static.hbs", function(exports, require, module) {
+
+});
+
+;require.register("terms-of-use.static.hbs", function(exports, require, module) {
+
+});
+
+;require.alias("process/browser.js", "process");process = require('process');require.register("___globals___", function(exports, require, module) {
+  
+});})();require('___globals___');
+
+
+//# sourceMappingURL=app.js.map
